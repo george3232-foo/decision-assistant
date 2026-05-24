@@ -93,11 +93,17 @@ Describe any decision in natural language — which job to take, which phone to 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/decision-assistant.git
+git clone https://github.com/george3232-foo/decision-assistant.git
 cd decision-assistant
 ```
 
-### 2. Start the server
+### 2. Set your API key
+
+```bash
+export LLM_API_KEY="your-api-key-here"
+```
+
+### 3. Start the server
 
 ```bash
 chmod +x start.sh
@@ -109,7 +115,7 @@ The script will:
 - Install dependencies
 - Start the FastAPI server on `http://localhost:8000`
 
-### 3. Open the app
+### 4. Open the app
 
 Navigate to **http://localhost:8000** in your browser.
 
@@ -119,11 +125,11 @@ Navigate to **http://localhost:8000** in your browser.
 
 The LLM client is configurable via environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LLM_BASE_URL` | `https://opengateway.gitlawb.com/v1` | OpenAI-compatible API base URL |
-| `LLM_MODEL` | `mimo-v2.5-pro` | Model name |
-| `LLM_API_KEY` | *(built-in)* | API key for the endpoint |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `LLM_API_KEY` | ✅ Yes | — | API key for your LLM provider |
+| `LLM_BASE_URL` | No | `https://opengateway.gitlawb.com/v1` | OpenAI-compatible API base URL |
+| `LLM_MODEL` | No | `mimo-v2.5-pro` | Model name |
 
 ### Example: Use OpenAI GPT-4o
 

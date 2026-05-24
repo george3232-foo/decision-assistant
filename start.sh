@@ -1,6 +1,6 @@
 #!/bin/bash
 # Decision Assistant — Start Script
-# Usage: ./start.sh
+# Usage: LLM_API_KEY="your-key" ./start.sh
 
 set -e
 
@@ -10,6 +10,14 @@ BACKEND_DIR="$SCRIPT_DIR/backend"
 echo "🧠 Decision Assistant"
 echo "====================="
 echo ""
+
+# Check API key
+if [ -z "$LLM_API_KEY" ]; then
+  echo "❌ LLM_API_KEY is not set."
+  echo "   Set it with: export LLM_API_KEY='your-api-key'"
+  echo "   Then run this script again."
+  exit 1
+fi
 
 # Check venv
 if [ ! -d "$BACKEND_DIR/.venv" ]; then
