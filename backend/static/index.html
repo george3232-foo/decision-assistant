@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Decision Assistant</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #12121a;
+      --card: rgba(255,255,255,0.03);
+      --card-h: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.08);
+      --glow: rgba(99,102,241,0.3);
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --muted: #64748b;
+      --accent: #6366f1;
+      --accent-h: #818cf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { color-scheme: dark; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+    
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; border-bottom: 1px solid var(--border); background: rgba(10,10,15,0.8); backdrop-filter: blur(20px); }
+    nav .inner { max-width: 900px; margin: 0 auto; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+    nav .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; text-decoration: none; color: var(--text); }
+    nav .logo-icon { width: 28px; height: 28px; border-radius: 8px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 14px; font-weight: 800; }
+    nav a.nav-link { color: var(--muted); text-decoration: none; font-size: 13px; transition: color 0.2s; }
+    nav a.nav-link:hover { color: var(--text); }
+    nav .links { display: flex; gap: 20px; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 80px 24px 40px; }
+
+    .glass { background: var(--card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 16px; transition: all 0.2s; }
+    .glass:hover { background: var(--card-h); border-color: var(--glow); box-shadow: 0 0 30px rgba(99,102,241,0.08); }
+
+    .btn { background: var(--accent); color: #fff; padding: 12px 24px; border-radius: 12px; font-weight: 600; border: none; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+    .btn:hover { background: var(--accent-h); transform: translateY(-1px); box-shadow: 0 0 20px rgba(99,102,241,0.15); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.05); }
+    .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 8px; }
+    .btn-full { width: 100%; }
+
+    textarea, input[type="text"] { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; color: var(--text); font-size: 15px; width: 100%; resize: vertical; font-family: inherit; transition: all 0.2s; }
+    textarea:focus, input[type="text"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 20px rgba(99,102,241,0.1); }
+    textarea::placeholder, input::placeholder { color: var(--muted); }
+
+    .badge { display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-accent { background: rgba(99,102,241,0.12); color: var(--accent); border: 1px solid rgba(99,102,241,0.25); }
+    .badge-success { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.25); }
+
+    .score-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.05); overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 3px; transition: width 0.5s; background: var(--accent); }
+
+    @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade { animation: fade 0.4s ease forwards; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+    .hidden { display: none !important; }
+
+    /* Hero */
+    .hero { text-align: center; padding: 60px 0 40px; }
+    .hero-icon { width: 56px; height: 56px; border-radius: 16px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; color: var(--accent); font-size: 24px; }
+    .hero h1 { font-size: 36px; font-weight: 700; margin-bottom: 12px; background: linear-gradient(to bottom right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { color: var(--text2); font-size: 17px; margin-bottom: 32px; }
+
+    .input-card { padding: 24px; }
+    .input-card textarea { min-height: 100px; margin-bottom: 16px; }
+    .input-footer { display: flex; align-items: center; justify-content: space-between; }
+    .input-hint { font-size: 11px; color: var(--muted); }
+
+    .examples { margin-top: 40px; }
+    .examples h3 { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+    .example-btn { display: block; width: 100%; text-align: left; padding: 14px 18px; margin-bottom: 8px; font-size: 13px; color: var(--text2); cursor: pointer; }
+    .example-btn:hover { color: var(--text); }
+
+    /* Analysis */
+    .section { margin-bottom: 20px; }
+    .section-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+    .section-body { padding: 20px 24px; }
+    .section-body.np { padding: 0; }
+
+    .options-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .factor-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+    .factor-row:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .factor-name { font-size: 13px; font-weight: 500; }
+    .factor-bar { width: 80px; }
+    .factor-weight { font-size: 12px; color: var(--text2); width: 20px; text-align: right; }
+
+    .question-block { margin-bottom: 20px; }
+    .question-block label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 8px; }
+    .question-block label .num { color: var(--accent); margin-right: 6px; }
+    .question-block label .hint { font-size: 11px; color: var(--muted); margin-left: 6px; }
+    .choice-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .choice-btn { padding: 6px 14px; border-radius: 8px; font-size: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text2); cursor: pointer; transition: all 0.2s; }
+    .choice-btn:hover { border-color: rgba(255,255,255,0.2); }
+    .choice-btn.active { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); color: #a5b4fc; }
+
+    /* Results */
+    .rec-card { padding: 32px; text-align: center; margin-bottom: 20px; }
+    .rec-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .rec-name { font-size: 30px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .rec-conf { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+    .rec-conf .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .rec-reasoning { color: var(--text2); font-size: 14px; line-height: 1.6; max-width: 600px; margin: 0 auto 20px; }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .pro-box, .con-box { padding: 16px; border-radius: 12px; }
+    .pro-box { background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.1); }
+    .con-box { background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.1); }
+    .pro-box h4 { color: var(--success); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .con-box h4 { color: var(--danger); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .pro-box li, .con-box li { font-size: 13px; color: var(--text2); margin-bottom: 4px; list-style: none; }
+    .pro-box li::before { content: "+ "; color: var(--success); }
+    .con-box li::before { content: "- "; color: var(--danger); }
+
+    .biases-box { padding: 16px; border-radius: 12px; background: rgba(245,158,11,0.04); border: 1px solid rgba(245,158,11,0.1); }
+    .biases-box h4 { color: var(--warning); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .bias-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+    .bias-tag { font-size: 10px; padding: 2px 8px; border-radius: 12px; white-space: nowrap; }
+    .bias-tag.low { background: rgba(100,116,139,0.1); color: var(--muted); border: 1px solid rgba(100,116,139,0.2); }
+    .bias-tag.medium { background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
+    .bias-tag.high { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+    .bias-desc { font-size: 13px; color: var(--text2); }
+
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .chart-box { padding: 20px; }
+    .chart-box canvas { max-height: 280px; }
+
+    .conf-box { padding: 20px; margin-bottom: 20px; }
+    .conf-grid { display: grid; grid-template-columns: 100px 1fr 1fr 1fr; gap: 16px; align-items: center; }
+    .conf-ring { position: relative; width: 80px; height: 80px; }
+    .conf-ring svg { transform: rotate(-90deg); }
+    .conf-ring span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
+    .conf-metric label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+    .conf-metric .val { font-size: 12px; font-weight: 600; margin-bottom: 4px; display: block; }
+
+    .matrix-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+    .matrix-table th { text-align: left; padding: 10px 12px; color: var(--muted); font-weight: 500; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .matrix-table th.center { text-align: center; }
+    .matrix-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .matrix-table td.center { text-align: center; }
+    .matrix-table .total-row { border-top: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+    .matrix-table .total-row td { font-weight: 700; font-size: 15px; }
+    .matrix-table .rank-row td { border: none; }
+    .rank-num { font-size: 22px; }
+    .rank-num.winner { color: var(--accent); }
+    .rank-num.loser { color: var(--muted); }
+
+    /* Simulator */
+    .sim-box { padding: 24px; margin-bottom: 20px; }
+    .sim-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .quick-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+    .chip { padding: 6px 12px; border-radius: 8px; font-size: 11px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text2); cursor: pointer; transition: all 0.2s; }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .slider-row { margin-bottom: 14px; }
+    .slider-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .slider-header span:first-child { font-size: 13px; font-weight: 500; }
+    .slider-header span:last-child { font-size: 13px; color: var(--accent); font-family: monospace; }
+    input[type="range"] { width: 100%; height: 4px; border-radius: 2px; appearance: none; background: rgba(255,255,255,0.05); cursor: pointer; accent-color: var(--accent); }
+    .sim-result { border-top: 1px solid var(--border); padding-top: 20px; margin-top: 20px; }
+    .sim-result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+    footer { text-align: center; padding: 24px; font-size: 11px; color: var(--muted); border-top: 1px solid rgba(255,255,255,0.04); }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 26px; }
+      .charts-row, .pros-cons { grid-template-columns: 1fr; }
+      .conf-grid { grid-template-columns: 1fr; justify-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="inner">
+      <a class="logo" href="#" onclick="showHome()">
+        <div class="logo-icon">D</div>
+        Decision Assistant
+      </a>
+      <div class="links">
+        <a class="nav-link" href="#" onclick="showHome()">New Decision</a>
+        <a class="nav-link" href="#" onclick="showHistory()">History</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- HOME -->
+    <div id="page-home">
+      <div class="hero fade">
+        <div class="hero-icon">✦</div>
+        <h1>Make better decisions<br>with structured AI reasoning</h1>
+        <p>Describe your decision in plain language. Get weighted analysis, tradeoffs, and recommendations.</p>
+      </div>
+      <div class="glass input-card fade">
+        <textarea id="decision-input" placeholder="Describe your decision... e.g. Should I buy an iPhone or Samsung? Camera matters a lot, budget around ₹70,000"></textarea>
+        <div id="home-error" class="hidden" style="color:var(--danger);font-size:13px;margin-bottom:12px"></div>
+        <div class="input-footer">
+          <span class="input-hint">Ctrl+Enter to analyze</span>
+          <button class="btn" id="analyze-btn" onclick="analyzeDecision()">Analyze Decision</button>
+        </div>
+      </div>
+      <div class="examples fade">
+        <h3>Try an example</h3>
+        <div class="glass example-btn" onclick="setExample(0)">Should I buy an iPhone 18 or Samsung S30? Camera matters a lot. Budget around ₹70,000</div>
+        <div class="glass example-btn" onclick="setExample(1)">Should I move to Bangalore for a new job? Currently in Mumbai earning well</div>
+        <div class="glass example-btn" onclick="setExample(2)">MBA vs continuing my current job? I'm 27 with 4 years of experience</div>
+      </div>
+    </div>
+
+    <!-- QUESTIONS -->
+    <div id="page-questions" class="hidden"></div>
+
+    <!-- RESULTS -->
+    <div id="page-results" class="hidden"></div>
+
+    <!-- HISTORY -->
+    <div id="page-history" class="hidden"></div>
+  </div>
+
+  <footer>Decision Assistant — Deterministic scoring, AI-powered reasoning</footer>
+
+  <script>
+    const API = '';
+    let currentDecision = null;
+    let radarChart = null;
+    let barChart = null;
+
+    const EXAMPLES = [
+      "Should I buy an iPhone 18 or Samsung S30? Camera matters a lot. Budget around ₹70,000",
+      "Should I move to Bangalore for a new job? Currently in Mumbai earning well",
+      "MBA vs continuing my current job? I'm 27 with 4 years of experience"
+    ];
+
+    function setExample(i) { document.getElementById('decision-input').value = EXAMPLES[i]; }
+
+    function showPage(id) {
+      ['page-home','page-questions','page-results','page-history'].forEach(p =>
+        document.getElementById(p).classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function showHome() { showPage('page-home'); }
+
+    document.getElementById('decision-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyzeDecision();
+    });
+
+    // --- ANALYZE ---
+    async function analyzeDecision() {
+      const input = document.getElementById('decision-input').value.trim();
+      if (!input) return;
+      const btn = document.getElementById('analyze-btn');
+      const err = document.getElementById('home-error');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+      err.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${API}/decision/analyze`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({input})
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Failed'); }
+        currentDecision = await res.json();
+        renderQuestions();
+        showPage('page-questions');
+      } catch(e) {
+        err.textContent = e.message; err.classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Analyze Decision';
+      }
+    }
+
+    // --- QUESTIONS ---
+    function renderQuestions() {
+      const d = currentDecision;
+      const ext = d.extracted;
+      let html = '<div class="fade">';
+      html += `<div style="margin-bottom:20px"><div class="options-row" style="margin-bottom:4px">`;
+      ext.options.forEach(o => html += `<span class="badge badge-accent">${o}</span>`);
+      html += `</div><h2 style="font-size:22px;font-weight:700;margin-top:8px">${ext.decision}</h2></div>`;
+
+      html += '<div class="glass section-body" style="margin-bottom:16px"><div class="section-title">Factors Identified</div>';
+      ext.factors.forEach(f => {
+        const pct = f.weight * 10;
+        html += `<div class="factor-row"><span class="factor-name">${f.name}</span><div class="factor-bar"><div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div></div><span class="factor-weight">${f.weight}</span></div>`;
+      });
+      html += '</div>';
+
+      html += '<div class="glass section-body"><div class="section-title">Answer These Questions</div>';
+      d.questions.forEach((q, i) => {
+        html += `<div class="question-block"><label><span class="num">${i+1}.</span>${q.text}<span class="hint">${q.factor_hint ? '('+q.factor_hint+')' : ''}</span></label>`;
+        if (q.options) {
+          html += '<div class="choice-row">';
+          q.options.forEach(o => {
+            html += `<button class="choice-btn" data-qid="${q.id}" data-val="${o}" onclick="selectChoice(this)">${o}</button>`;
+          });
+          html += '</div>';
+        } else {
+          html += `<input type="text" data-qid="${q.id}" class="free-answer" placeholder="Your answer...">`;
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+
+      html += `<div id="questions-error" class="hidden" style="color:var(--danger);font-size:13px;margin-bottom:12px"></div>`;
+      html += `<button class="btn btn-full" id="score-btn" onclick="scoreDecision()" style="margin-top:12px">Get Recommendation</button>`;
+      html += '</div>';
+      document.getElementById('page-questions').innerHTML = html;
+    }
+
+    function selectChoice(el) {
+      const siblings = el.parentElement.querySelectorAll('.choice-btn');
+      siblings.forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    // --- SCORE ---
+    async function scoreDecision() {
+      const btn = document.getElementById('score-btn');
+      const err = document.getElementById('questions-error');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scoring...';
+      err.classList.add('hidden');
+
+      // Collect answers
+      const answers = [];
+      document.querySelectorAll('.choice-btn.active').forEach(el => {
+        answers.push({question_id: el.dataset.qid, answer: el.dataset.val});
+      });
+      document.querySelectorAll('.free-answer').forEach(el => {
+        if (el.value.trim()) answers.push({question_id: el.dataset.qid, answer: el.value.trim()});
+      });
+
+      try {
+        await fetch(`${API}/decision/${currentDecision.decision_id}/answers`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(answers)
+        });
+        const res = await fetch(`${API}/decision/${currentDecision.decision_id}/score`, {method: 'POST'});
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Scoring failed'); }
+        const data = await res.json();
+        renderResults(data);
+        showPage('page-results');
+      } catch(e) {
+        err.textContent = e.message; err.classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Get Recommendation';
+      }
+    }
+
+    // --- RESULTS ---
+    function renderResults(data) {
+      const rec = data.recommendation;
+      const mat = data.matrix;
+      const conf = rec.confidence;
+      const confPct = Math.round(conf.overall * 100);
+      const dotColor = confPct >= 70 ? 'var(--success)' : confPct >= 50 ? 'var(--warning)' : 'var(--danger)';
+      const did = data.decision_id;
+
+      let html = '<div class="fade">';
+
+      // Recommendation card
+      html += `<div class="glass rec-card">
+        <div class="rec-label">Recommendation</div>
+        <div class="rec-name">${rec.recommendation}</div>
+        <div class="rec-conf"><span class="dot" style="background:${dotColor}"></span>${confPct}% confidence</div>
+        <div class="rec-reasoning">${rec.reasoning}</div>`;
+
+      // Pros/Cons
+      if (rec.pros.length || rec.cons.length) {
+        html += '<div class="pros-cons">';
+        if (rec.pros.length) { html += '<div class="pro-box"><h4>Pros</h4><ul>'; rec.pros.forEach(p => html += `<li>${p}</li>`); html += '</ul></div>'; }
+        if (rec.cons.length) { html += '<div class="con-box"><h4>Cons</h4><ul>'; rec.cons.forEach(c => html += `<li>${c}</li>`); html += '</ul></div>'; }
+        html += '</div>';
+      }
+
+      // Biases
+      if (rec.biases.length) {
+        html += '<div class="biases-box"><h4>Detected Biases</h4>';
+        rec.biases.forEach(b => {
+          html += `<div class="bias-item"><span class="bias-tag ${b.severity}">${b.bias_type}</span><span class="bias-desc">${b.description}</span></div>`;
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+
+      // Charts
+      html += '<div class="charts-row">';
+      html += '<div class="glass chart-box"><div class="section-title">Factor Comparison</div><canvas id="radar-chart"></canvas></div>';
+      html += '<div class="glass chart-box"><div class="section-title">Weighted Scores</div><canvas id="bar-chart"></canvas></div>';
+      html += '</div>';
+
+      // Confidence
+      const circumference = 2 * Math.PI * 15.9155;
+      const dash = conf.overall * 100;
+      html += `<div class="glass conf-box"><div class="section-title">Confidence Breakdown</div><div class="conf-grid">
+        <div class="conf-ring"><svg width="80" height="80" viewBox="0 0 36 36"><path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="3"/><path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="${dash}, 100" stroke-linecap="round"/></svg><span>${confPct}%</span></div>`;
+      [{l:'Data Completeness',v:conf.data_completeness},{l:'Question Completion',v:conf.question_completion},{l:'Option Differentiation',v:conf.option_similarity}].forEach(m => {
+        const c = m.v >= 0.7 ? 'var(--success)' : m.v >= 0.5 ? 'var(--warning)' : 'var(--danger)';
+        html += `<div class="conf-metric"><label>${m.l}</label><span class="val">${Math.round(m.v*100)}%</span><div class="score-bar"><div class="score-fill" style="width:${m.v*100}%;background:${c}"></div></div></div>`;
+      });
+      html += '</div></div>';
+
+      // Matrix
+      html += '<div class="glass section-body"><div class="section-title">Decision Matrix</div><table class="matrix-table"><thead><tr><th>Factor</th><th class="center">Weight</th>';
+      mat.option_scores.forEach(o => html += `<th class="center">${o.option}</th>`);
+      html += '</tr></thead><tbody>';
+      const maxScore = Math.max(...mat.option_scores.flatMap(o => Object.values(o.factor_scores)), 1);
+      mat.factors.forEach(f => {
+        html += `<tr><td>${f.name}</td><td class="center"><span class="badge badge-accent">${f.weight}</span></td>`;
+        mat.option_scores.forEach(o => {
+          const s = o.factor_scores[f.name] || 0;
+          html += `<td class="center"><div style="display:flex;flex-direction:column;align-items:center;gap:4px"><span>${s}</span><div style="width:48px" class="score-bar"><div class="score-fill" style="width:${(s/maxScore)*100}%"></div></div></div></td>`;
+        });
+        html += '</tr>';
+      });
+      html += '<tr class="total-row"><td>Weighted Total</td><td></td>';
+      mat.option_scores.forEach(o => html += `<td class="center">${o.weighted_total}</td>`);
+      html += '</tr><tr class="rank-row"><td style="color:var(--muted);font-weight:500">Rank</td><td></td>';
+      mat.rankings.forEach(r => html += `<td class="center"><span class="rank-num ${r.rank===1?'winner':'loser'}">#${r.rank}</span></td>`);
+      html += '</tr></tbody></table></div>';
+
+      // Simulator
+      // Dynamic quick scenarios based on actual factor names
+      const quickScenarios = [];
+      mat.factors.forEach(f => {
+        const lower = f.name.toLowerCase();
+        if (lower.includes('budget') || lower.includes('price') || lower.includes('cost')) {
+          quickScenarios.push({label: 'Budget doesn\'t matter', factor: f.name, weight: 1});
+        }
+        if (lower.includes('camera') || lower.includes('photo')) {
+          quickScenarios.push({label: 'Camera is everything', factor: f.name, weight: 10});
+        }
+        if (lower.includes('battery') || lower.includes('power')) {
+          quickScenarios.push({label: 'Battery is king', factor: f.name, weight: 10});
+        }
+        if (lower.includes('brand') || lower.includes('ecosystem')) {
+          quickScenarios.push({label: 'Ignore brand/ecosystem', factor: f.name, weight: 1});
+        }
+      });
+      html += `<div class="glass sim-box"><div class="sim-header"><div class="section-title" style="margin:0">Scenario Simulator</div><button class="btn btn-ghost btn-sm" onclick="resetSim()">Reset</button></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Adjust weights to see how the recommendation changes.</p>
+        <div class="quick-chips">`;
+      quickScenarios.forEach(qs => {
+        html += `<button class="chip" onclick="applyQuick('${qs.factor}',${qs.weight},'${qs.label}')">${qs.label}</button>`;
+      });
+      html += '</div>';
+      mat.factors.forEach(f => {
+        html += `<div class="slider-row"><div class="slider-header"><span>${f.name}</span><span id="slider-val-${f.name.replace(/\s/g,'_')}">${f.weight}</span></div><input type="range" min="1" max="10" value="${f.weight}" data-factor="${f.name}" oninput="updateSlider(this)"></div>`;
+      });
+      html += `<div id="sim-error" class="hidden" style="color:var(--danger);font-size:13px;margin-bottom:12px"></div>`;
+      html += `<button class="btn btn-full" id="sim-btn" onclick="simulate('${did}')">Simulate</button>`;
+      html += '<div id="sim-result"></div></div>';
+
+      html += '</div>';
+      document.getElementById('page-results').innerHTML = html;
+
+      // Render charts
+      setTimeout(() => {
+        renderRadarChart(mat);
+        renderBarChart(mat);
+      }, 100);
+    }
+
+    function renderRadarChart(mat) {
+      const ctx = document.getElementById('radar-chart');
+      if (!ctx) return;
+      const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6'];
+      const datasets = mat.option_scores.map((o, i) => ({
+        label: o.option,
+        data: mat.factors.map(f => o.factor_scores[f.name] || 0),
+        borderColor: colors[i % colors.length],
+        backgroundColor: colors[i % colors.length] + '22',
+        borderWidth: 2, pointRadius: 3,
+      }));
+      if (radarChart) radarChart.destroy();
+      radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: { labels: mat.factors.map(f => f.name), datasets },
+        options: { responsive: true, maintainAspectRatio: true, scales: { r: { min: 0, max: 10, ticks: { color: '#64748b', stepSize: 2 }, grid: { color: 'rgba(255,255,255,0.05)' }, pointLabels: { color: '#94a3b8', font: { size: 11 } } } }, plugins: { legend: { labels: { color: '#94a3b8', padding: 16 } } } }
+      });
+    }
+
+    function renderBarChart(mat) {
+      const ctx = document.getElementById('bar-chart');
+      if (!ctx) return;
+      const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6'];
+      if (barChart) barChart.destroy();
+      barChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: mat.option_scores.map(o => o.option),
+          datasets: [{ data: mat.option_scores.map(o => o.weighted_total), backgroundColor: mat.option_scores.map((_, i) => colors[i % colors.length]), borderRadius: 8, barThickness: 36 }]
+        },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, scales: { x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { ticks: { color: '#94a3b8', font: { size: 13 } }, grid: { display: false } } }, plugins: { legend: { display: false } } }
+      });
+    }
+
+    // --- SIMULATOR ---
+    function updateSlider(el) {
+      const name = el.dataset.factor;
+      document.getElementById('slider-val-' + name.replace(/\s/g,'_')).textContent = el.value;
+    }
+
+    function applyQuick(factor, weight, name) {
+      const slider = document.querySelector(`input[data-factor="${factor}"]`);
+      if (slider) { slider.value = weight; updateSlider(slider); }
+    }
+
+    function resetSim() {
+      const did = currentDecision?.decision_id;
+      if (!did) return;
+      // Re-fetch and re-render
+      fetch(`${API}/decision/${did}`).then(r => r.json()).then(d => {
+        if (d.matrix) renderResults({decision_id: did, matrix: d.matrix, recommendation: d.recommendation, status: d.status});
+      });
+    }
+
+    async function simulate(did) {
+      const btn = document.getElementById('sim-btn');
+      const err = document.getElementById('sim-error');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Simulating...';
+      err.classList.add('hidden');
+
+      const modified = {};
+      document.querySelectorAll('input[type="range"][data-factor]').forEach(el => {
+        modified[el.dataset.factor] = parseInt(el.value);
+      });
+
+      try {
+        const res = await fetch(`${API}/decision/${did}/simulate`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({modified_weights: modified, scenario_name: 'Custom Scenario'})
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Simulation failed'); }
+        const data = await res.json();
+        const sc = data.scenario;
+        let html = '<div class="sim-result fade">';
+        html += `<div class="sim-result-header"><span style="font-weight:600">${sc.scenario_name}</span><span class="badge badge-accent">${sc.recommendation}</span></div>`;
+        html += '<canvas id="sim-bar-chart"></canvas></div>';
+        document.getElementById('sim-result').innerHTML = html;
+        setTimeout(() => {
+          const ctx = document.getElementById('sim-bar-chart');
+          if (!ctx) return;
+          const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6'];
+          new Chart(ctx, {
+            type: 'bar',
+            data: { labels: sc.matrix.option_scores.map(o => o.option), datasets: [{ data: sc.matrix.option_scores.map(o => o.weighted_total), backgroundColor: sc.matrix.option_scores.map((_, i) => colors[i % colors.length]), borderRadius: 8, barThickness: 36 }] },
+            options: { indexAxis: 'y', responsive: true, scales: { x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { ticks: { color: '#94a3b8', font: { size: 13 } }, grid: { display: false } } }, plugins: { legend: { display: false } } }
+          });
+        }, 100);
+      } catch(e) {
+        err.textContent = e.message; err.classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Simulate';
+      }
+    }
+
+    // --- HISTORY ---
+    async function showHistory() {
+      showPage('page-history');
+      document.getElementById('page-history').innerHTML = '<div style="text-align:center;padding:40px"><span class="spinner"></span></div>';
+      try {
+        const res = await fetch(`${API}/decision/history`);
+        const data = await res.json();
+        if (data.decisions.length === 0) {
+          document.getElementById('page-history').innerHTML = '<div class="glass" style="padding:48px;text-align:center"><p style="color:var(--muted);margin-bottom:16px">No decisions yet</p><a class="btn" href="#" onclick="showHome()">Make your first decision</a></div>';
+          return;
+        }
+        let html = '<div class="fade"><h2 style="font-size:22px;font-weight:700;margin-bottom:24px">Decision History</h2>';
+        data.decisions.forEach(d => {
+          const recName = d.recommendation?.recommendation || 'N/A';
+          const conf = d.recommendation ? Math.round(d.recommendation.confidence.overall * 100) : 0;
+          const cat = d.extracted?.category || 'general';
+          const title = d.extracted?.decision || 'Untitled';
+          const dt = new Date(d.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          html += `<a class="glass" style="display:block;padding:18px 20px;margin-bottom:10px;text-decoration:none;color:var(--text);cursor:pointer" onclick="loadDecision('${d.id}')">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div><div style="font-weight:600;margin-bottom:4px">${title}</div><div style="font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${d.raw_input}</div></div>
+              <div style="text-align:right;shrink:0;margin-left:16px"><span class="badge badge-accent">${recName}</span><div style="font-size:11px;color:var(--muted);margin-top:4px">${conf}% confidence</div></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:10px;font-size:11px;color:var(--muted)"><span class="badge badge-accent">${cat}</span><span>${dt}</span></div>
+          </a>`;
+        });
+        html += '</div>';
+        document.getElementById('page-history').innerHTML = html;
+      } catch(e) {
+        document.getElementById('page-history').innerHTML = `<p style="color:var(--danger);text-align:center;padding:40px">${e.message}</p>`;
+      }
+    }
+
+    async function loadDecision(id) {
+      try {
+        const res = await fetch(`${API}/decision/${id}`);
+        const d = await res.json();
+        if (d.status === 'complete' && d.matrix) {
+          renderResults({decision_id: d.id, matrix: d.matrix, recommendation: d.recommendation, status: d.status});
+          showPage('page-results');
+        } else {
+          currentDecision = {decision_id: d.id, extracted: d.extracted, questions: d.questions, status: d.status};
+          renderQuestions();
+          showPage('page-questions');
+        }
+      } catch(e) { alert(e.message); }
+    }
+  </script>
+</body>
+</html>
